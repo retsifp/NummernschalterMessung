@@ -15,7 +15,7 @@
 #define led 13
 #define nsa 2 // Pin des nsa-Kontaktes
 #define nsi 3 // Pin des nsi-Kontaktes
-#define baudr 9600 // Baud-Rate für Serielle Verbindung (Standard: 9600)
+#define baudr 115200 // Baud-Rate für Serielle Verbindung
 #define inputPullups true
 
 uint8_t nsiImpulses = 0;
@@ -24,7 +24,6 @@ uint8_t invalidPauses = 0;
 uint16_t minMaxImpulse[2] = {-1,0};
 uint16_t minMaxPause[2] = {-1,0};
 
-//Times
 unsigned long nsiImpulseTime = -1;
 unsigned long nsiPauseTime = -1;
 unsigned long nsaTime = -1;
@@ -34,7 +33,7 @@ bool nsiOldState = !inputPullups; //NC
 
 void setup() {
 	pinMode(led, OUTPUT);
-#if inputPullups == false // Externe Pullups
+#if inputPullups == false // Externe Pull-Down-Widerstände
 	pinMode(nsa, INPUT);
 	pinMode(nsi, INPUT);
 	#define nsaRead() digitalRead(nsa)
@@ -125,14 +124,15 @@ void nsiChange() {
 			//MinMax Funktion
 			if(diff < minMaxPause[0]) {
 				minMaxPause[0] = diff;
-			} else if(diff > minMaxPause[1]) {
+			}
+			if(diff > minMaxPause[1]) {
 				minMaxPause[1] = diff;
 			}
 		}
 		if(nsiImpulses == 0 || (diff >= lowerThresholdPause && diff <= upperThresholdPause)) {
 			// Gültige Pause
 			nsiImpulseTime = millis();
-			Serial.print("\tGueltige Pause. Laenge:\t\t");
+			Serial.print(F("\tGueltige Pause. Laenge:\t\t"));
 			Serial.print(diff);
 			Serial.print(" ms\n");
 		} else {
@@ -148,14 +148,15 @@ void nsiChange() {
 		diff = millis() - nsiImpulseTime;
 		if(diff < minMaxImpulse[0]) {
 			minMaxImpulse[0] = diff;
-		} else if(diff > minMaxImpulse[1]) {
+		}
+		if(diff > minMaxImpulse[1]) {
 			minMaxImpulse[1] = diff;
 		}
 		if(diff >= lowerThresholdImpulse && diff <= upperThresholdImpulse) {
 			// Gültiger Impuls
 			nsiPauseTime = millis();
 			nsiImpulses++;
-			Serial.print("\tGueltiger Impuls. Laenge:\t");
+			Serial.print(F("\tGueltiger Impuls. Laenge:\t"));
 			Serial.print(diff);
 			Serial.print(" ms\n");
 		} else {

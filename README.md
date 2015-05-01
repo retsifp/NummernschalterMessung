@@ -2,6 +2,7 @@
 
 
 Misst Impuls- und Pausendauer eines angeschlossenen Nummernschalters und gibt die gemessenen Zeiten über USB aus.
+
 Keine externe Beschaltung benötigt bei ```#define inputPullups true``` (Standard).
 
 ### Verbinden des Nummernschalters ###
