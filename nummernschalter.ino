@@ -106,19 +106,28 @@ void nsaChange() {
 		Serial.print(millis() - nsaTime);
 		Serial.print(" ms\n");
 		if((nsiImpulses + invalidImpulses) > 1) {
+			uint16_t iSumme, pSumme;
+			float pAvg, iAvg;
 			// Bei einem oder weniger Impulsen macht das keinen Sinn.
-			Serial.print(F("Impulsdauer (Min/Max/Avg): "));
+			Serial.print(F("Impulsdauer (Min/Max/Avg/StdDev): "));
 			Serial.print(minMaxImpulse[0]);
 			Serial.print("/");
 			Serial.print(minMaxImpulse[1]);
 			Serial.print("/");
-			Serial.print(calcAvg(impulseTimes));
-			Serial.print(F(", Pausendauer (Min/Max/Avg): "));
+			Serial.print(iAvg = calcAvg(impulseTimes, &iSumme));
+			Serial.print("/");
+			Serial.print(calcStdDev(impulseTimes, iAvg));
+			Serial.print(F(", Pausendauer (Min/Max/Avg/StdDev): "));
 			Serial.print(minMaxPause[0]);
 			Serial.print("/");
 			Serial.print(minMaxPause[1]);
 			Serial.print("/");
-			Serial.print(calcAvg(pauseTimes));
+			Serial.print(pAvg = calcAvg(pauseTimes, &pSumme));
+			Serial.print("/");
+			Serial.print(calcStdDev(pauseTimes, pAvg));
+			Serial.print("\nBerechnete Gesamt-Ablaufzeit: ");
+			Serial.print(iSumme + pSumme + pAvg); // Berechne Gesamt-Ablaufzeit, Methode 1
+			Serial.print(" ms\n");
 		}
 		Serial.print("\n");
 	}
@@ -129,7 +138,7 @@ void nsiChange() {
 	if(!nsiRead()) {
 		// Impuls Start
 		diff = millis() - nsiPauseTime; // Impulslänge berechnen; Debounce-Zeit wird nicht berücksichtigt, da bei steigender und fallender Flanke debounced wird
-		if(nsiImpulses != 0) {
+		if((nsiImpulses + invalidImpulses) != 0) {
 			//MinMax Funktion
 			if(diff < minMaxPause[0]) {
 				minMaxPause[0] = diff;
@@ -137,22 +146,26 @@ void nsiChange() {
 			if(diff > minMaxPause[1]) {
 				minMaxPause[1] = diff;
 			}
+		} else {
+			nsiStart = millis();
 		}
 		if(diff >= lowerThresholdPause && diff <= upperThresholdPause) {
 			// Gültige Pause
 			Serial.print(F("\tGueltige Pause. Laenge:\t\t"));
-		} else if(nsiImpulses != 0) {
+		} else if((nsiImpulses + invalidImpulses) != 0) {
 			// Ungültige Pause
 			invalidPauses++;
 			Serial.print(F("\tUngueltige Pause. Laenge:\t"));
 		}
-		if(nsiImpulses != 0) {
-			pauseTimes[nsiImpulses - 1] = diff;
+		if((nsiImpulses + invalidImpulses) != 0) {
+			pauseTimes[(nsiImpulses + invalidImpulses) - 1] = diff;
 			Serial.print(diff);
 			Serial.print(" ms\t");
 			Serial.print("Periodendauer: ");
-			Serial.print(pauseTimes[nsiImpulses - 1] + impulseTimes[nsiImpulses - 1]); // Gesamte Periodendauer
-			Serial.print(" ms\n");
+			Serial.print(pauseTimes[(nsiImpulses + invalidImpulses) - 1] + impulseTimes[(nsiImpulses + invalidImpulses) - 1]); // Gesamte Periodendauer
+			Serial.print(" ms");
+			Serial.print("\tPuls-Pausenverhaeltnis:  1 : ");
+			Serial.println(1.0 *(pauseTimes[(nsiImpulses + invalidImpulses) - 1] + impulseTimes[(nsiImpulses + invalidImpulses) - 1]) / impulseTimes[(nsiImpulses + invalidImpulses) - 1]);
 		}
 		nsiImpulseTime = millis();
 	} else {
@@ -185,7 +198,7 @@ void deleteArray(uint16_t array[]) {
 	}
 }
 
-float calcAvg(uint16_t array[]) {
+float calcAvg(uint16_t array[], uint16_t *summe) {
 	uint16_t sum = 0;
 	uint8_t i = 0;
 	for(;i < maxImpulses;i++) {
@@ -194,5 +207,18 @@ float calcAvg(uint16_t array[]) {
 		}
 		sum += array[i];
 	}
+	*summe = sum;
 	return 1.0 * sum / i;
+}
+
+double calcStdDev(uint16_t array[], float avg) {
+	uint8_t i = 0;
+	double stdDev = 0.0;
+	for(;i < maxImpulses;i++) {
+		if(array[i] == 0) {
+			break;
+		}
+		stdDev += pow((1.0 * array[i] - avg), 2);
+	}
+	return 1.0 * sqrt((1.0/(i-1)) * stdDev);
 }
