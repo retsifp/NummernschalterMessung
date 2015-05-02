@@ -146,8 +146,6 @@ void nsiChange() {
 			if(diff > minMaxPause[1]) {
 				minMaxPause[1] = diff;
 			}
-		} else {
-			nsiStart = millis();
 		}
 		if(diff >= lowerThresholdPause && diff <= upperThresholdPause) {
 			// Gültige Pause
